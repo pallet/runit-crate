@@ -1,0 +1,7 @@
+{:header "runit"
+ :title "Install and configure runit."
+ :git-repo "https://github.com/pallet/runit-crate"
+ :api-docs "http://palletops.com/runit-crate/0.8/api"
+ :annotated-docs "http://palletops.com/runit-crate/0.8/annotated/uberdoc.html"
+ :tag-prefix ""
+ :versions [{:pallet "0.8.0-beta.4" :version "0.8.0-alpha.1"}]}
