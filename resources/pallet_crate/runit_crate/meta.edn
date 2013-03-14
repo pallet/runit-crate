@@ -1,5 +1,8 @@
 {:header "runit"
- :title "Install and configure runit."
+ :title " A [pallet](http://palletops.com/) crate to install and configure
+[runit](http://smarden.org/runit/).
+
+The `runit` configuration does not replace the system init as PID 1."
  :git-repo "https://github.com/pallet/runit-crate"
  :api-docs "http://palletops.com/runit-crate/0.8/api"
  :annotated-docs "http://palletops.com/runit-crate/0.8/annotated/uberdoc.html"

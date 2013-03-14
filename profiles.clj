@@ -1,5 +1,5 @@
 {:dev
- {:dependencies [[com.palletops/pallet "0.8.0-beta.4" :classifier "tests"]
+ {:dependencies [[com.palletops/pallet "0.8.0-SNAPSHOT" :classifier "tests"]
                  [com.palletops/crates "0.8.0-SNAPSHOT"]
                  [ch.qos.logback/logback-classic "1.0.9"]]
   :plugins [[lein-set-version "0.3.0"]
