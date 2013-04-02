@@ -1,4 +1,4 @@
-(defproject com.palletops/runit-crate "0.8.0-SNAPSHOT"
+(defproject com.palletops/runit-crate "0.8.0-alpha.1"
   :description "Pallet crate to install, configure and use runit"
   :url "http://palletops.com"
   :license {:name "Eclipse Public License"
@@ -6,7 +6,7 @@
   :scm {:url "git@github.com:pallet/runit-crate.git"}
 
   :dependencies [[org.clojure/clojure "1.4.0"]
-                 [com.palletops/pallet "0.8.0-beta.4"]]
+                 [com.palletops/pallet "0.8.0-beta.6"]]
   :repositories {"sonatype"
                  {:url "https://oss.sonatype.org/content/repositories/releases/"
                   :snapshots false}}

@@ -1,18 +1,30 @@
-;; TODO edit this with links to the software being installed and configured
 (ns pallet.crate.runit
-  "A [pallet](https://palletops.com/) crate to install and configure runit"
-  [pallet.action :refer [with-action-options]]
-  [pallet.actions :refer [directory exec-checked-script remote-directory
-                          remote-file]
-                  :as actions]
-  [pallet.api :refer [plan-fn] :as api]
-  [pallet.crate :refer [assoc-settings defmethod-plan defplan get-settings]]
-  [pallet.crate-install :as crate-install]
-  [pallet.stevedore :refer [fragment]]
-  [pallet.script.lib :refer [config-root file]]
-  [pallet.utils :refer [apply-map]]
-  [pallet.version-dispatch :refer [defmethod-version-plan
-                                   defmulti-version-plan]])
+  "A [pallet](https://palletops.com/) crate to install and configure runit.
+
+runit is not configured to replace init as PID 1."
+  (:require
+   [clojure.tools.logging :refer [debugf warnf]]
+   [pallet.action :refer [with-action-options]]
+   [pallet.actions
+    :refer [directory exec-checked-script plan-when plan-when-not
+            remote-directory remote-file symbolic-link wait-for-file]
+    :as actions]
+   [pallet.actions-impl :refer [service-script-path]]
+   [pallet.action-plan :as action-plan]
+   [pallet.actions.direct.service :refer [service-impl]]
+   [pallet.api :refer [plan-fn] :as api]
+   [pallet.crate :refer [assoc-settings defmethod-plan defplan get-settings
+                         target-flag? update-settings]]
+   [pallet.crate-install :as crate-install]
+   [pallet.crate.initd :refer [init-script-path]]
+   [pallet.crate.service
+    :refer [service-supervisor service-supervisor-available?
+            service-supervisor-config]]
+   [pallet.stevedore :refer [fragment script]]
+   [pallet.script.lib :refer [config-root file] :as lib]
+   [pallet.utils :refer [apply-map]]
+   [pallet.version-dispatch :refer [defmethod-version-plan
+                                    defmulti-version-plan]]))
 
 ;;; # Settings
 (defn default-settings
@@ -22,24 +34,69 @@
   {:user "runit"
    :group "runit"
    :owner "runit"
-   :config-dir (fragment (file (config-root) "runit"))})
+   :sv "/usr/bin/sv"
+   :sv-dir (fragment (file (config-root) "sv"))
+   :service-dir (fragment (file (config-root) "service"))})
 
 (defmulti-version-plan settings-map [version settings])
 
 (defmethod-version-plan
     settings-map {:os :linux}
     [os os-version version settings]
-  (cond
-   (:install-strategy settings) settings
-   :else (assoc settings
-           :install-strategy :packages
-           :packages {:apt ["runit"]
-                      :aptitude ["runit"]
-                      :yum ["runit"]
-                      :pacman ["runit"]
-                      :zypper ["runit"]
-                      :portage ["runit"]
-                      :brew ["runit"]})))
+  (let [settings (update-in
+                  settings [:runsvdir]
+                  #(or % (fragment (file (config-root) "runit" "runsvdir"))))]
+    (cond
+     (:install-strategy settings) settings
+     :else (assoc settings
+             :install-strategy :packages
+             :packages ["runit"]))))
+
+
+(defmethod-version-plan
+    settings-map {:os :debian-base}
+    [os os-version version settings]
+  (let [settings (update-in
+                  settings [:runsvdir]
+                  #(or % (fragment (file (config-root) "event.d" "runsvdir"))))]
+    (cond
+     (:install-strategy settings) settings
+     :else (assoc settings
+             :install-strategy :packages
+             :packages ["runit"]
+             :preseeds [{:line "runit runit/signalinit boolean true"}]))))
+
+(defmethod-version-plan
+    settings-map {:os :rh-base}
+    [os os-version version settings]
+  (let [settings (update-in
+                  settings [:runsvdir]
+                  #(or % (fragment (file (config-root) "runit" "runsvdir"))))]
+    (cond
+     (:install-strategy settings) settings
+     :else (assoc settings
+             :install-strategy ::build))))
+
+(defmethod-version-plan
+    settings-map {:os :os-x}
+    [os os-version version settings]
+  (let [settings (->
+                  settings
+                  (update-in
+                   settings [:runsvdir]
+                   #(or % (fragment
+                           (file "usr" "local"  "var" "runit" "runsvdir"))))
+                  (update-in
+                   settings [:service-dir]
+                   #(or % (fragment (file "usr" "local"  "var" "service" ))))
+                  (update-in
+                   settings [:sv-dir]
+                   #(or % (fragment (file "usr" "local"  "var" "sv" )))))]
+    (cond
+     (:install-strategy settings) settings
+     :else (assoc settings
+             :install-strategy :packages
+             :packages ["runit"]))))
 
 (defplan settings
   "Settings for runit"
@@ -53,6 +110,7 @@
   "Create the runit user"
   [{:keys [instance-id] :as options}]
   (let [{:keys [user owner group home]} (get-settings :runit options)]
+    (debugf "Create runit owner %s user %s group %s" owner user group)
     (actions/group group :system true)
     (when (not= owner user)
       (actions/user owner :group group :system true))
@@ -62,41 +120,115 @@
 ;;; # Install
 (defplan install
   "Install runit"
-  [& {:keys [instance-id]}]
+  [{:keys [instance-id]}]
   (let [settings (get-settings :runit {:instance-id instance-id})]
+    (debugf "Install runit settings %s" settings)
     (crate-install/install :runit instance-id)))
 
 ;;; # Configure
-(def ^{:doc "Flag for recognising changes to configuration"}
-  runit-config-changed-flag "runit-config")
 
-(defplan config-file
-  "Helper to write config files"
-  [{:keys [owner group config-dir] :as settings} filename file-source]
-  (directory config-dir :owner owner :group group)
-  (apply
-   remote-file (str config-dir "/" filename)
-   :flag-on-changed runit-config-changed-flag
-   :owner owner :group group
-   (apply concat file-source)))
+;;; # Service Supervisor Implementation
+(defmethod service-supervisor-available? :runit
+  [_]
+  true)
 
-(defplan configure
-  "Write all config files"
+(defn- add-service
+  "Add a service directory to runit"
+  [{:keys [service-name run-file] :as service-options}
+   {:keys [instance-id] :as options}]
+  (debugf "Adding service settings for %s" service-name)
+  (update-settings
+   :runit options assoc-in [:jobs (keyword service-name)] service-options))
+
+(defmethod service-supervisor-config :runit
+  [_ {:keys [service-name run-file] :as service-options} options]
+  (add-service service-options options))
+
+(defn- write-service
+  "Add a service directory to runit"
+  [service-name
+   {:keys [run-file log-run-file]}
+   {:keys [instance-id] :as options}]
+  (debugf "Writing service files for %s" service-name)
+  (let [{:keys [sv-dir owner group]} (get-settings :runit options)]
+    (directory                          ; create the service directory
+     (fragment (file ~sv-dir ~service-name))
+     :owner owner :group group)
+    (apply-map                          ; create the run file
+     remote-file (fragment (file ~sv-dir ~service-name "run"))
+     :owner owner :group group
+     :mode "0755"
+     run-file)
+    (when log-run-file
+      (directory (fragment (file ~sv-dir ~service-name "log"))
+                 :owner owner :group group :mode "0755")
+      (apply-map                        ; create the run file
+       remote-file (fragment (file ~sv-dir ~service-name "log" "run"))
+       :owner owner :group group
+       :mode "0755"
+       log-run-file))
+    ;; (directory (fragment (file ~sv-dir ~service-name "supervise"))
+    ;;            :owner owner :group group :mode "0755")
+    (symbolic-link                      ; link to /etc/init.d
+     "/usr/bin/sv" (init-script-path service-name))))
+
+(defn configure
+  "Write out job definitions."
   [{:keys [instance-id] :as options}]
-  (let [{:keys [] :as settings} (get-settings :runit options)]
-    (config-file settings "runit.conf" {:content (str config)})))
+  (let [{:keys [jobs]} (get-settings :runit {:instance-id instance-id})]
+    (debugf "Writing service files for %s jobs" (count jobs))
+    (doseq [[job {:keys [run-file] :as service-options}] jobs
+            :let [service-name (name job)]]
+      (write-service service-name service-options options))))
 
-;;; # Server spec
+(defmethod service-supervisor :runit
+  [_ {:keys [service-name]}
+   {:keys [action if-flag if-stopped instance-id]
+    :or {action :start}
+    :as options}]
+  (debugf "Controlling service %s, :action %s" service-name action)
+  (let [{:keys [sv sv-dir service-dir]} (get-settings :runit options)]
+    (case action
+      :enable (do
+                (exec-checked-script
+                 (format "Enable service %s" service-name)
+                 (lib/ln (file ~sv-dir ~service-name)
+                         (file ~service-dir ~service-name)
+                         :symbolic true :force true))
+                ;; Check for supervise/ok to be present. According to the docs,
+                ;; this should take less than five seconds.
+                (wait-for-file
+                 (fragment (file ~sv-dir ~service-name "supervise" "ok"))
+                 :standoff 5))
+      :disable (exec-checked-script
+                (format "Disable service %s" service-name)
+                (sv down ~service-name)
+                (lib/rm (file ~service-dir ~service-name) :force true))
+      :start-stop (warnf ":start-stop not implemented for runit")
+      (if if-flag
+        (plan-when (target-flag? if-flag)
+          (exec-checked-script
+           (str (name action) " " service-name)
+           (sv ~(name action) ~service-name)))
+        (if if-stopped
+          (exec-checked-script
+           (str (name action) " " service-name)
+           (if-not ("sv" "status" ~service-name)
+             (sv ~(name action) ~service-name)))
+          (exec-checked-script
+           (str (name action) " " service-name)
+           (sv ~(name action) ~service-name)))))))
+
+;;; ## Server Spec
 (defn server-spec
   "Returns a server-spec that installs and configures runit."
   [settings & {:keys [instance-id] :as options}]
   (api/server-spec
    :phases
    {:settings (plan-fn
-                (pallet/crate/runit/settings (merge settings options)))
+                (pallet.crate.runit/settings (merge settings options)))
     :install (plan-fn
-              (user options)
-              (install :instance-id instance-id))
+               (user options)
+               (install options))
     :configure (plan-fn
-                 (config options)
-                 (run options))}))
+                 (configure options))}))

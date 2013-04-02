@@ -2,6 +2,7 @@
 /lib
 /classes
 /checkouts
+/logs
 doc-src/VERSIONS.md
 doc-src/INTRO.md
 pom.xml
