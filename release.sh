@@ -30,6 +30,13 @@ echo ""
 echo ""
 echo "Now edit project.clj, ReleaseNotes and README"
 
+$EDITOR resources/pallet_crate/runit_crate/meta.edn
+$EDITOR doc-src/USAGE.md
+git add resources/pallet_crate/runit_crate/meta.edn doc-src/USAGE.md doc-src/FOOTER.md \
+&& git commit -m "Updated metadata for $version" \
+&& lein crate-doc \
+|| exit 1
+
 $EDITOR project.clj
 $EDITOR ReleaseNotes.md
 $EDITOR README.md
