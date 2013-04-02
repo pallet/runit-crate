@@ -14,7 +14,7 @@
 (deftest invoke-test
   (is (build-actions/build-actions {}
         (runit/settings {})
-        (runit/install))))
+        (runit/install {}))))
 
 (defn runit-test [config]
   (service-supervisor-test :runit config {:process-name "sleep 100"}))
