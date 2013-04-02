@@ -172,7 +172,7 @@ runit is not configured to replace init as PID 1."
     (symbolic-link                      ; link to /etc/init.d
      "/usr/bin/sv" (init-script-path service-name))))
 
-(defn jobs
+(defn configure
   "Write out job definitions."
   [{:keys [instance-id] :as options}]
   (let [{:keys [jobs]} (get-settings :runit {:instance-id instance-id})]
@@ -231,4 +231,4 @@ runit is not configured to replace init as PID 1."
                (user options)
                (install options))
     :configure (plan-fn
-                 (jobs options))}))
+                 (configure options))}))

@@ -3,7 +3,7 @@
    clojure.test
    pallet.test-utils)
   (:require
-   [pallet.actions :refer [remote-file]]
+   [pallet.actions :refer [package-manager remote-file]]
    [pallet.api :refer [plan-fn] :as api]
    [pallet.build-actions :as build-actions]
    [pallet.crate.service :refer [service-supervisor-config]]
@@ -24,7 +24,8 @@
                 :run-file {:content (str "#!/bin/sh\nexec /tmp/myjob")}}]
     (api/server-spec
      :extends [(runit/server-spec {})]
-     :phases {:settings (plan-fn (service-supervisor-config :runit config {}))
+     :phases {:bootstrap (plan-fn (package-manager :update))
+              :settings (plan-fn (service-supervisor-config :runit config {}))
               :configure (plan-fn
                            (remote-file
                             "/tmp/myjob"
