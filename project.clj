@@ -6,7 +6,7 @@
   :scm {:url "git@github.com:pallet/runit-crate.git"}
 
   :dependencies [[org.clojure/clojure "1.4.0"]
-                 [com.palletops/pallet "0.8.0-SNAPSHOT"]]
+                 [com.palletops/pallet "0.8.0-beta.6"]]
   :repositories {"sonatype"
                  {:url "https://oss.sonatype.org/content/repositories/releases/"
                   :snapshots false}}
