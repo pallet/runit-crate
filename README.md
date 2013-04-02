@@ -23,7 +23,7 @@ The `runit` configuration does not replace the system init as PID 1.
 </thead>
 <tbody>
   <tr>
-    <th>0.8.0-beta.4</th>
+    <th>0.8.0-beta.6</th>
     <td>0.8.0-alpha.1</td>
     <td>clojars</td>
     <td>com.palletops</td>
