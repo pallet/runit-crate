@@ -1,0 +1,111 @@
+<html lang="en">
+  <head>
+    <title>pallet.crate.runit documentation</title>
+    <link href="css/default.css" type="text/css" rel="stylesheet" />
+    <link href="css/codox-md.css" type="text/css" rel="stylesheet" />
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/page_effects.js"></script>
+  </head>
+  <body>
+    <header>
+    <div data-scrollspy="scrollspy" class="topbar">
+      <div class="topbar-inner">
+        <div class="container">
+          <a href="/" class="brand">Pallet</a>
+          <ul class="nav">
+            <li class=""><a href="/doc">Documentation</a></li>
+            <li class=""><a href="/news">News</a></li>
+            <li class=""><a href="/blog">Blog</a></li>
+            <li class=""><a href="https://github.com/pallet/pallet">Code</a></li>
+            <li class=""><a href="/services">Services</a></li>
+            <li class=""><a href="/support">Support</a></li>
+            <li class=""><a href="/contact">Contact</a></li>
+          </ul>
+          <form action="http://www.google.com/search" method="get" class="pull-right">
+            <input placeholder="Search" value="" maxlength="255" name="q" type="text" />
+            <input value="palletops.com" type="hidden" name="sitesearch" />
+          </form>
+        </div>
+      </div>
+    </div>
+      <div id="header">
+        <h1><a href="http://palletops.com"><span class="project-title">Runit-crate 0.8.0-SNAPSHOT API documentation</span></a></h1>
+      </div>
+    </header>
+    <navigation>
+      <div id="namespaces" class="sidebar">
+        <h3>Namespaces</h3>
+        <ul class="ns-links">
+          <li class="ns-list"><a class="ns-link ns-name" href="pallet.crate.runit.html">pallet.crate.runit</a></li>
+        </ul>
+      </div>
+      <div id="vars" class="sidebar">
+        <h3>Public Vars</h3>
+        <ul class="ns-var-links">
+          <li class="ns-var-list"><a class="ns-var-link ns-var-name" href="pallet.crate.runit.html#var-configure">configure</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="pallet.crate.runit.html#var-default-settings">default-settings</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="pallet.crate.runit.html#var-install">install</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="pallet.crate.runit.html#var-server-spec">server-spec</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="pallet.crate.runit.html#var-settings">settings</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="pallet.crate.runit.html#var-user">user</a></li>
+        </ul>
+      </div>
+    </navigation>
+    <article>
+      <div id="content" class="namespace-docs">
+        <h2 class="namespace-title">pallet.crate.runit documentation</h2>
+        <div class="doc"><p>A <a href="https://palletops.com/">pallet</a> crate to install and configure runit.</p>
+
+<p>runit is not configured to replace init as PID 1.</p>
+</div>
+        <div class="ns-vars">
+          <div class="public">
+            <h3><a id="var-configure" class="source var-name" href="https://github.com/pallet/runit-crate/blob/develop/src/pallet/crate/runit.clj#L175">configure</a></h3>
+            <h4 class="var-type fn" id="var-type">fn</h4>
+            <div class="usage">[{:keys [instance-id], :as options}]</div>
+            
+            
+            <div class="doc"><p>Write out job definitions.</p>
+</div>
+          </div><div class="public">
+            <h3><a id="var-default-settings" class="source var-name" href="https://github.com/pallet/runit-crate/blob/develop/src/pallet/crate/runit.clj#L30">default-settings</a></h3>
+            <h4 class="var-type fn" id="var-type">fn</h4>
+            <div class="usage">[]</div>
+            
+            
+            <div class="doc"><p>Provides default settings, that are merged with any user supplied settings.</p>
+</div>
+          </div><div class="public">
+            <h3><a id="var-install" class="source var-name" href="https://github.com/pallet/runit-crate/blob/develop/src/pallet/crate/runit.clj#L121">install</a></h3>
+            <h4 class="var-type fn" id="var-type">fn</h4>
+            <div class="usage">[{:keys [instance-id]}]</div>
+            
+            
+            <div class="doc"><p>Install runit</p>
+</div>
+          </div><div class="public">
+            <h3><a id="var-server-spec" class="source var-name" href="https://github.com/pallet/runit-crate/blob/develop/src/pallet/crate/runit.clj#L223">server-spec</a></h3>
+            <h4 class="var-type fn" id="var-type">fn</h4>
+            <div class="usage">[settings &amp; {:keys [instance-id], :as options}]</div>
+            
+            
+            <div class="doc"><p>Returns a server-spec that installs and configures runit.</p>
+</div>
+          </div><div class="public">
+            <h3><a id="var-settings" class="source var-name" href="https://github.com/pallet/runit-crate/blob/develop/src/pallet/crate/runit.clj#L101">settings</a></h3>
+            <h4 class="var-type fn" id="var-type">fn</h4>
+            <div class="usage">[{:keys [instance-id], :as settings}]</div>
+            
+            
+            <div class="doc"><p>Settings for runit</p>
+</div>
+          </div><div class="public">
+            <h3><a id="var-user" class="source var-name" href="https://github.com/pallet/runit-crate/blob/develop/src/pallet/crate/runit.clj#L109">user</a></h3>
+            <h4 class="var-type fn" id="var-type">fn</h4>
+            <div class="usage">[{:keys [instance-id], :as options}]</div>
+            
+            
+            <div class="doc"><p>Create the runit user</p>
+</div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </body>
+
+</html>
