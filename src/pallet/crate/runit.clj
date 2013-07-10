@@ -3,6 +3,7 @@
 
 runit is not configured to replace init as PID 1."
   (:require
+   [clj-schema.schema :refer [def-map-schema optional-path sequence-of]]
    [clojure.tools.logging :refer [debugf warnf]]
    [pallet.action :refer [with-action-options]]
    [pallet.actions
@@ -13,9 +14,10 @@ runit is not configured to replace init as PID 1."
    [pallet.action-plan :as action-plan]
    [pallet.actions.direct.service :refer [service-impl]]
    [pallet.api :refer [plan-fn] :as api]
+   [pallet.contracts :refer [any-value check-spec]]
    [pallet.crate :refer [assoc-settings defmethod-plan defplan get-settings
                          target-flag? update-settings]]
-   [pallet.crate-install :as crate-install]
+   [pallet.crate-install :as crate-install :refer [crate-install-settings]]
    [pallet.crate.initd :refer [init-script-path]]
    [pallet.crate.service
     :refer [service-supervisor service-supervisor-available?
@@ -27,6 +29,15 @@ runit is not configured to replace init as PID 1."
                                     defmulti-version-plan]]))
 
 ;;; # Settings
+(def-map-schema :loose runit-settings
+  crate-install-settings
+  [[:user] string?
+   [:group] string?
+   [:owner] string?
+   [:sv] string?
+   [:sv-dir] string?
+   [:service-dir] string?])
+
 (defn default-settings
   "Provides default settings, that are merged with any user supplied settings."
   []
@@ -132,11 +143,22 @@ runit is not configured to replace init as PID 1."
   [_]
   true)
 
+(def-map-schema runit-service-options
+  :strict
+  [[:service-name] string?
+   [:run-file] remote-file-arguments
+   (optional-path [:log-run-file]) remote-file-arguments])
+
+(defmacro check-runit-service-options
+  [m]
+  (check-spec m `runit-service-options &form))
+
 (defn- add-service
   "Add a service directory to runit"
   [{:keys [service-name run-file] :as service-options}
    {:keys [instance-id] :as options}]
   (debugf "Adding service settings for %s" service-name)
+  (check-runit-service-options service-options)
   (update-settings
    :runit options assoc-in [:jobs (keyword service-name)] service-options))
 
