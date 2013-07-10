@@ -8,7 +8,8 @@ runit is not configured to replace init as PID 1."
    [pallet.action :refer [with-action-options]]
    [pallet.actions
     :refer [directory exec-checked-script plan-when plan-when-not
-            remote-directory remote-file symbolic-link wait-for-file]
+            remote-directory remote-file remote-file-arguments symbolic-link
+            wait-for-file]
     :as actions]
    [pallet.actions-impl :refer [service-script-path]]
    [pallet.action-plan :as action-plan]
@@ -205,8 +206,8 @@ runit is not configured to replace init as PID 1."
 
 (defmethod service-supervisor :runit
   [_ {:keys [service-name]}
-   {:keys [action if-flag if-stopped instance-id]
-    :or {action :start}
+   {:keys [action if-flag if-stopped instance-id wait]
+    :or {action :start wait true}
     :as options}]
   (debugf "Controlling service %s, :action %s" service-name action)
   (let [{:keys [sv sv-dir service-dir]} (get-settings :runit options)]
@@ -219,9 +220,10 @@ runit is not configured to replace init as PID 1."
                          :symbolic true :force true))
                 ;; Check for supervise/ok to be present. According to the docs,
                 ;; this should take less than five seconds.
-                (wait-for-file
-                 (fragment (file ~sv-dir ~service-name "supervise" "ok"))
-                 :standoff 5))
+                (when wait
+                  (wait-for-file
+                   (fragment (file ~sv-dir ~service-name "supervise" "ok"))
+                   :standoff 5)))
       :disable (exec-checked-script
                 (format "Disable service %s" service-name)
                 (sv down ~service-name)
