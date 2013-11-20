@@ -3028,25 +3028,28 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>com.palletops/runit-crate -- Marginalia</title></head><body><table><tr><td class="docs"><div class="header"><h1 class="project-name">com.palletops/runit-crate</h1><h2 class="project-version">0.8.0-SNAPSHOT</h2><br /><p>Pallet crate to install, configure and use runit</p>
-</div><div class="dependencies"><h3>dependencies</h3><table><tr><td class="dep-name">org.clojure/clojure</td><td class="dotted"><hr /></td><td class="dep-version">1.4.0</td></tr><tr><td class="dep-name">com.palletops/pallet</td><td class="dotted"><hr /></td><td class="dep-version">0.8.0-beta.6</td></tr></table></div></td><td class="codes" style="text-align: center; vertical-align: middle;color: #666;padding-right:20px"><br /><br /><br />(this space intentionally left almost blank)</td></tr><tr><td class="docs"><div class="toc"><a name="toc"><h3>namespaces</h3></a><ul><li><a href="#pallet.crate.runit">pallet.crate.runit</a></li></ul></div></td><td class="codes">&nbsp;</td></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#pallet.crate.runit" name="pallet.crate.runit"><h1 class="project-name">pallet.crate.runit</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>A <a href="https://palletops.com/">pallet</a> crate to install and configure runit.</p>
+</script><title>com.palletops/runit-crate -- Marginalia</title></head><body><table><tr><td class="docs"><div class="header"><h1 class="project-name">com.palletops/runit-crate</h1><h2 class="project-version">0.8.0-alpha.2</h2><br /><p>Pallet crate to install, configure and use runit</p>
+</div><div class="dependencies"><h3>dependencies</h3><table><tr><td class="dep-name">org.clojure/clojure</td><td class="dotted"><hr /></td><td class="dep-version">1.4.0</td></tr><tr><td class="dep-name">com.palletops/pallet</td><td class="dotted"><hr /></td><td class="dep-version">0.8.0-RC.1</td></tr></table></div></td><td class="codes" style="text-align: center; vertical-align: middle;color: #666;padding-right:20px"><br /><br /><br />(this space intentionally left almost blank)</td></tr><tr><td class="docs"><div class="toc"><a name="toc"><h3>namespaces</h3></a><ul><li><a href="#pallet.crate.runit">pallet.crate.runit</a></li><li><a href="#pallet.crate.socklog">pallet.crate.socklog</a></li></ul></div></td><td class="codes">&nbsp;</td></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#pallet.crate.runit" name="pallet.crate.runit"><h1 class="project-name">pallet.crate.runit</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>A <a href="https://palletops.com/">pallet</a> crate to install and configure runit.</p>
 
 <p>runit is not configured to replace init as PID 1.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns pallet.crate.runit
   (:require
+   [clj-schema.schema :refer [def-map-schema optional-path sequence-of]]
    [clojure.tools.logging :refer [debugf warnf]]
    [pallet.action :refer [with-action-options]]
    [pallet.actions
     :refer [directory exec-checked-script plan-when plan-when-not
-            remote-directory remote-file symbolic-link wait-for-file]
+            remote-directory remote-file remote-file-arguments symbolic-link
+            wait-for-file]
     :as actions]
    [pallet.actions-impl :refer [service-script-path]]
    [pallet.action-plan :as action-plan]
    [pallet.actions.direct.service :refer [service-impl]]
    [pallet.api :refer [plan-fn] :as api]
+   [pallet.contracts :refer [any-value check-spec]]
    [pallet.crate :refer [assoc-settings defmethod-plan defplan get-settings
                          target-flag? update-settings]]
-   [pallet.crate-install :as crate-install]
+   [pallet.crate-install :as crate-install :refer [crate-install-settings]]
    [pallet.crate.initd :refer [init-script-path]]
    [pallet.crate.service
     :refer [service-supervisor service-supervisor-available?
@@ -3055,9 +3058,15 @@ net.brehaut.ClojureTools = (function (SH) {
    [pallet.script.lib :refer [config-root file] :as lib]
    [pallet.utils :refer [apply-map]]
    [pallet.version-dispatch :refer [defmethod-version-plan
-                                    defmulti-version-plan]]))</pre></td></tr><tr><td class="docs"><p>Provides default settings, that are merged with any user supplied settings.</p>
-
-<h1>Settings</h1>
+                                    defmulti-version-plan]]))</pre></td></tr><tr><td class="docs"><h1>Settings</h1>
+</td><td class="codes"><pre class="brush: clojure">(def-map-schema :loose runit-settings
+  crate-install-settings
+  [[:user] string?
+   [:group] string?
+   [:owner] string?
+   [:sv] string?
+   [:sv-dir] string?
+   [:service-dir] string?])</pre></td></tr><tr><td class="docs"><p>Provides default settings, that are merged with any user supplied settings.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn default-settings
   []
   ;; TODO add configuration options here
@@ -3147,11 +3156,20 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"></td></tr><tr><td class="docs"><h1>Service Supervisor Implementation</h1>
 </td><td class="codes"><pre class="brush: clojure">(defmethod service-supervisor-available? :runit
   [_]
-  true)</pre></td></tr><tr><td class="docs"><p>Add a service directory to runit</p>
+  true)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def-map-schema runit-service-options
+  :strict
+  [[:service-name] string?
+   [:run-file] remote-file-arguments
+   (optional-path [:log-run-file]) remote-file-arguments])</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmacro check-runit-service-options
+  [m]
+  (check-spec m `runit-service-options &amp;form))</pre></td></tr><tr><td class="docs"><p>Add a service directory to runit</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- add-service
   [{:keys [service-name run-file] :as service-options}
    {:keys [instance-id] :as options}]
   (debugf &quot;Adding service settings for %s&quot; service-name)
+  (check-runit-service-options service-options)
   (update-settings
    :runit options assoc-in [:jobs (keyword service-name)] service-options))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defmethod service-supervisor-config :runit
@@ -3190,10 +3208,12 @@ net.brehaut.ClojureTools = (function (SH) {
     (doseq [[job {:keys [run-file] :as service-options}] jobs
             :let [service-name (name job)]]
       (write-service service-name service-options options))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def action-names
+  {:reload :hup})</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defmethod service-supervisor :runit
   [_ {:keys [service-name]}
-   {:keys [action if-flag if-stopped instance-id]
-    :or {action :start}
+   {:keys [action if-flag if-stopped instance-id wait]
+    :or {action :start wait true}
     :as options}]
   (debugf &quot;Controlling service %s, :action %s&quot; service-name action)
   (let [{:keys [sv sv-dir service-dir]} (get-settings :runit options)]
@@ -3206,9 +3226,10 @@ net.brehaut.ClojureTools = (function (SH) {
                          :symbolic true :force true))
                 ;; Check for supervise/ok to be present. According to the docs,
                 ;; this should take less than five seconds.
-                (wait-for-file
-                 (fragment (file ~sv-dir ~service-name &quot;supervise&quot; &quot;ok&quot;))
-                 :standoff 5))
+                (when wait
+                  (wait-for-file
+                   (fragment (file ~sv-dir ~service-name &quot;supervise&quot; &quot;ok&quot;))
+                   :standoff 5)))
       :disable (exec-checked-script
                 (format &quot;Disable service %s&quot; service-name)
                 (sv down ~service-name)
@@ -3218,15 +3239,15 @@ net.brehaut.ClojureTools = (function (SH) {
         (plan-when (target-flag? if-flag)
           (exec-checked-script
            (str (name action) &quot; &quot; service-name)
-           (sv ~(name action) ~service-name)))
+           (sv ~(name (action action-names action)) ~service-name)))
         (if if-stopped
           (exec-checked-script
            (str (name action) &quot; &quot; service-name)
            (if-not (&quot;sv&quot; &quot;status&quot; ~service-name)
-             (sv ~(name action) ~service-name)))
+             (sv ~(name (action action-names action)) ~service-name)))
           (exec-checked-script
            (str (name action) &quot; &quot; service-name)
-           (sv ~(name action) ~service-name)))))))</pre></td></tr><tr><td class="docs"><p>Returns a server-spec that installs and configures runit.</p>
+           (sv ~(name (action action-names action)) ~service-name)))))))</pre></td></tr><tr><td class="docs"><p>Returns a server-spec that installs and configures runit.</p>
 
 <h2>Server Spec</h2>
 </td><td class="codes"><pre class="brush: clojure">(defn server-spec
@@ -3239,5 +3260,177 @@ net.brehaut.ClojureTools = (function (SH) {
                (user options)
                (install options))
     :configure (plan-fn
-                 (configure options))}))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/fogus/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+                 (configure options))}))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#pallet.crate.socklog" name="pallet.crate.socklog"><h1 class="project-name">pallet.crate.socklog</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>A <a href="https://palletops.com/">pallet</a> crate to install and configure socklog
+for use with runit.</p>
+</td><td class="codes"><pre class="brush: clojure">(ns pallet.crate.socklog
+  (:require
+   [clj-schema.schema :refer [def-map-schema map-schema optional-path
+                              sequence-of]]
+   [clojure.tools.logging :refer [debugf warnf]]
+   [pallet.action :refer [with-action-options]]
+   [pallet.actions
+    :refer [directory exec-checked-script plan-when plan-when-not
+            remote-directory remote-file remote-file-arguments symbolic-link
+            wait-for-file]
+    :as actions]
+   [pallet.actions-impl :refer [service-script-path]]
+   [pallet.action-plan :as action-plan]
+   [pallet.actions.direct.service :refer [service-impl]]
+   [pallet.api :refer [plan-fn] :as api]
+   [pallet.contracts :refer [any-value check-spec*]]
+   [pallet.crate :refer [assoc-settings defmethod-plan defplan get-settings
+                         target-flag? update-settings]]
+   [pallet.crate-install :as crate-install :refer [crate-install-settings]]
+   [pallet.crate.initd :refer [init-script-path]]
+   [pallet.crate.service :as service
+    :refer [supervisor-config supervisor-config-map]]
+   [pallet.stevedore :refer [fragment script]]
+   [pallet.script.lib :refer [log-root file] :as lib]
+   [pallet.utils :refer [apply-map]]
+   [pallet.version-dispatch :refer [defmethod-version-plan
+                                    defmulti-version-plan]]))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmulti socklog-schema
+  (fn socklog-schema-eval [facility] facility))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def-map-schema socklog-base-schema
+   crate-install-settings
+   [[:facility] keyword?
+    [:user] string?
+    [:log-user] string?
+    [:service-name] string?
+    [:supervisor] keyword?])</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmethod socklog-schema :unix
+  [_]
+  (map-schema
+   :strict
+   socklog-base-schema
+   [[:socket] string?]))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmethod socklog-schema :inet
+  [_]
+  socklog-base-schema)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmethod socklog-schema :klog
+  [_]
+  socklog-base-schema)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmethod socklog-schema :ucspi
+  [_]
+  socklog-base-schema)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmacro check-socklog-settings
+  [m]
+  `(let [m# ~m
+         f# (:facility m#)]
+    (check-spec* m# (socklog-schema f#)
+                 (str &quot;socklog-&quot; (name f#) &quot;-schema&quot;)
+                 ~(:line (meta &amp;form)) ~*file*)))</pre></td></tr><tr><td class="docs"><p>Provides default settings, that are merged with any user supplied settings.</p>
+</td><td class="codes"><pre class="brush: clojure">(defmulti default-settings
+  (fn default-settings-eval [facility] facility))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn default-settings-base
+  [facility]
+  {:user &quot;nobody&quot;
+   :log-user &quot;log&quot;
+   :supervisor :runit
+   ;; :log-base (fragment (file (log-root) &quot;socklog&quot;))
+   :service-name (str &quot;socklog-&quot; (name facility))})</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmethod default-settings :default
+  [facility]
+  (default-settings-base facility))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmethod default-settings :unix
+  [facility]
+  (assoc (default-settings-base facility)
+    :socket &quot;/dev/log&quot;))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmulti-version-plan settings-map [version settings])</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmethod-version-plan
+    settings-map {:os :debian-base}
+    [os os-version version settings]
+  (cond
+   (:install-strategy settings) settings
+   :else (assoc settings
+           :install-strategy :packages
+           :packages [&quot;socklog&quot;])))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn- facility-kw
+  [facility]
+  {:pre [(keyword? facility)]}
+  (keyword (str &quot;socklog-&quot; (name facility))))</pre></td></tr><tr><td class="docs"><p>Settings for socklog.  The :facility keyword must be one of
+    :unix, :inet, :klog or :ucspi</p>
+</td><td class="codes"><pre class="brush: clojure">(defplan settings
+  [{:keys [facility] :as settings} &amp; {:keys [instance-id] :as options}]
+  {:pre [(#{:unix :inet :klog :ucspi} facility)]}
+  (let [settings (merge (default-settings facility) settings)
+        settings (settings-map (:version settings) settings)]
+    (check-socklog-settings settings)
+    (assoc-settings (facility-kw facility)
+                    settings {:instance-id instance-id})
+    (supervisor-config (facility-kw facility) settings (or options {}))))</pre></td></tr><tr><td class="docs"><p>Create the socklog users</p>
+
+<h1>User</h1>
+</td><td class="codes"><pre class="brush: clojure">(defplan user
+  [{:keys [facility instance-id] :as options}]
+  (let [{:keys [user log-user]} (get-settings (facility-kw facility) options)]
+    (debugf &quot;Create socklog user %s log-user %s&quot; user log-user)
+    (actions/user user :system true :create-home false :shell :bash)
+    (actions/user log-user :system true :create-home false :shell :bash)))</pre></td></tr><tr><td class="docs"><p>Install socklog</p>
+
+<h1>Install</h1>
+</td><td class="codes"><pre class="brush: clojure">(defplan install
+  [{:keys [facility instance-id] :as options}]
+  (let [{:keys [log-user] :as settings}
+        (get-settings (facility-kw facility) options)]
+    (debugf &quot;Install socklog settings %s&quot; settings)
+    (check-socklog-settings settings)
+    (directory &quot;/var/log/socklog&quot; :mode &quot;0755&quot; :owner log-user)
+    (directory &quot;/var/log/socklog/main&quot; :mode &quot;0755&quot; :owner log-user)
+    (crate-install/install (facility-kw facility) instance-id)))</pre></td></tr><tr><td class="docs"><h2>Provide a configuration for the socklog daemon</h2>
+</td><td class="codes"><pre class="brush: clojure">(defmethod supervisor-config-map [:socklog-unix :runit]
+  [_ {:keys [service-name log-user user socket] :as settings} options]
+  {:service-name service-name
+   :run-file {:content (str &quot;#!/bin/sh\nexec 2&gt;&amp;1\nexec chpst -U &quot;
+                            user &quot; socklog unix &quot; socket)}
+   :log-run-file {:content (str &quot;#!/bin/sh\nexec chpst -u &quot;
+                                log-user &quot; svlogd -t main/*&quot;)}})</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmethod supervisor-config-map [:socklog-inet :runit]
+  [_ {:keys [service-name log-user user] :as settings} options]
+  {:service-name service-name
+   :run-file {:content (str &quot;#!/bin/sh\nexec 2&gt;&amp;1\nexec chpst -U &quot;
+                            user &quot; socklog inet&quot;)}
+   :log-run-file {:content (str &quot;#!/bin/sh\nexec chpst -u &quot;
+                                log-user &quot; svlogd -t main/*&quot;)}})</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmethod supervisor-config-map [:socklog-klog :runit]
+  [_ {:keys [service-name log-user user] :as settings} options]
+  {:service-name service-name
+   :run-file {:content (str &quot;#!/bin/sh\nexec 2&gt;&amp;1\nexec chpst -U &quot;
+                            user &quot; socklog klog&quot;)}
+   :log-run-file {:content (str &quot;#!/bin/sh\nexec chpst -u &quot;
+                                log-user &quot; svlogd -t main/*&quot;)}})</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmethod supervisor-config-map [:socklog-ucspi :runit]
+  [_ {:keys [service-name log-user user] :as settings} options]
+  {:service-name service-name
+   :run-file {:content (str &quot;#!/bin/sh\nexec 2&gt;&amp;1\nexec chpst -U &quot;
+                            user &quot; socklog ucspi&quot;)}
+   :log-run-file {:content (str &quot;#!/bin/sh\nexec chpst -u &quot;
+                                log-user &quot; svlogd -t main/*&quot;)}})</pre></td></tr><tr><td class="docs"><p>Run the socklog service.</p>
+
+<h1>Run</h1>
+</td><td class="codes"><pre class="brush: clojure">(defplan service
+  [&amp; {:keys [action facility if-flag if-stopped instance-id]
+      :or {action :manage}
+      :as options}]
+  (let [{:keys [supervision-options] :as settings}
+        (get-settings (facility-kw facility) {:instance-id instance-id})]
+    (check-socklog-settings settings)
+    (service/service settings (merge supervision-options
+                                     (dissoc options :instance-id)))))</pre></td></tr><tr><td class="docs"><p>Returns a server-spec that installs and configures socklog.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn server-spec
+  [{:keys [facility] :as settings} &amp; {:keys [instance-id] :as options}]
+  (let [options (assoc options :facility facility)]
+    (api/server-spec
+     :phases
+     (merge
+      {:settings (plan-fn
+                   (apply-map pallet.crate.socklog/settings settings options))
+       :install (plan-fn
+                  (user options)
+                  (install options))
+       :configure (plan-fn
+                    ;; (configure options)
+                    ;; (apply-map service :action :enable options))
+       :run (plan-fn
+              (apply-map service :action :start options))}))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/fogus/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
        SyntaxHighlighter.all()</script></body></html>
