@@ -204,6 +204,9 @@ runit is not configured to replace init as PID 1."
             :let [service-name (name job)]]
       (write-service service-name service-options options))))
 
+(def action-names
+  {:reload :hup})
+
 (defmethod service-supervisor :runit
   [_ {:keys [service-name]}
    {:keys [action if-flag if-stopped instance-id wait]
@@ -233,15 +236,15 @@ runit is not configured to replace init as PID 1."
         (plan-when (target-flag? if-flag)
           (exec-checked-script
            (str (name action) " " service-name)
-           (sv ~(name action) ~service-name)))
+           (sv ~(name (action action-names action)) ~service-name)))
         (if if-stopped
           (exec-checked-script
            (str (name action) " " service-name)
            (if-not ("sv" "status" ~service-name)
-             (sv ~(name action) ~service-name)))
+             (sv ~(name (action action-names action)) ~service-name)))
           (exec-checked-script
            (str (name action) " " service-name)
-           (sv ~(name action) ~service-name)))))))
+           (sv ~(name (action action-names action)) ~service-name)))))))
 
 ;;; ## Server Spec
 (defn server-spec
