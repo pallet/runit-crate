@@ -4,15 +4,12 @@
 [Annotated source](http://palletops.com/runit-crate/0.8/annotated/uberdoc.html) &#xb7;
 [Release Notes](https://github.com/pallet/runit-crate/blob/develop/ReleaseNotes.md)
 
- A [pallet](http://palletops.com/) crate to install and configure
-[runit](http://smarden.org/runit/).
-
-The `runit` configuration does not replace the system init as PID 1.
+A pallet crate to install and configure runit.
 
 ### Dependency Information
 
 ```clj
-:dependencies [[com.palletops/runit-crate "0.8.0-alpha.1"]]
+:dependencies [[com.palletops/runit-crate "0.8.0-alpha.2"]]
 ```
 
 ### Releases
@@ -22,6 +19,14 @@ The `runit` configuration does not replace the system init as PID 1.
   <tr><th>Pallet</th><th>Crate Version</th><th>Repo</th><th>GroupId</th></tr>
 </thead>
 <tbody>
+  <tr>
+    <th>0.8.0-RC.4</th>
+    <td>0.8.0-alpha.2</td>
+    <td>clojars</td>
+    <td>com.palletops</td>
+    <td><a href='https://github.com/pallet/runit-crate/blob/0.8.0-alpha.2/ReleaseNotes.md'>Release Notes</a></td>
+    <td><a href='https://github.com/pallet/runit-crate/blob/0.8.0-alpha.2/'>Source</a></td>
+  </tr>
   <tr>
     <th>0.8.0-beta.6</th>
     <td>0.8.0-alpha.1</td>
@@ -34,6 +39,8 @@ The `runit` configuration does not replace the system init as PID 1.
 </table>
 
 ## Usage
+
+The `runit` configuration does not replace the system init as PID 1.
 
 The `server-spec` function provides a convenient pallet server spec for
 runit.  It takes a single map as an argument, specifying configuration
@@ -58,6 +65,15 @@ The `install` function is responsible for actually installing runit.
 
 The `configure` function writes the runit configuration file, using the form
 passed to the :config key in the `settings` function.
+
+
+### Supported Actions
+
+The `runit` crate supports the `:start`, `:stop`, `:restart`, `:enable` and
+`:disable` actions to
+[`service`](http://palletops.com/pallet/api/0.8/pallet.crate.service.html#var-service).
+
+### Job Configuration
 
 ## Support
 

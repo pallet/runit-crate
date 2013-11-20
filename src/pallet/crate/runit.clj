@@ -3,19 +3,22 @@
 
 runit is not configured to replace init as PID 1."
   (:require
+   [clj-schema.schema :refer [def-map-schema optional-path sequence-of]]
    [clojure.tools.logging :refer [debugf warnf]]
    [pallet.action :refer [with-action-options]]
    [pallet.actions
     :refer [directory exec-checked-script plan-when plan-when-not
-            remote-directory remote-file symbolic-link wait-for-file]
+            remote-directory remote-file remote-file-arguments symbolic-link
+            wait-for-file]
     :as actions]
    [pallet.actions-impl :refer [service-script-path]]
    [pallet.action-plan :as action-plan]
    [pallet.actions.direct.service :refer [service-impl]]
    [pallet.api :refer [plan-fn] :as api]
+   [pallet.contracts :refer [any-value check-spec]]
    [pallet.crate :refer [assoc-settings defmethod-plan defplan get-settings
                          target-flag? update-settings]]
-   [pallet.crate-install :as crate-install]
+   [pallet.crate-install :as crate-install :refer [crate-install-settings]]
    [pallet.crate.initd :refer [init-script-path]]
    [pallet.crate.service
     :refer [service-supervisor service-supervisor-available?
@@ -27,6 +30,15 @@ runit is not configured to replace init as PID 1."
                                     defmulti-version-plan]]))
 
 ;;; # Settings
+(def-map-schema :loose runit-settings
+  crate-install-settings
+  [[:user] string?
+   [:group] string?
+   [:owner] string?
+   [:sv] string?
+   [:sv-dir] string?
+   [:service-dir] string?])
+
 (defn default-settings
   "Provides default settings, that are merged with any user supplied settings."
   []
@@ -132,11 +144,22 @@ runit is not configured to replace init as PID 1."
   [_]
   true)
 
+(def-map-schema runit-service-options
+  :strict
+  [[:service-name] string?
+   [:run-file] remote-file-arguments
+   (optional-path [:log-run-file]) remote-file-arguments])
+
+(defmacro check-runit-service-options
+  [m]
+  (check-spec m `runit-service-options &form))
+
 (defn- add-service
   "Add a service directory to runit"
   [{:keys [service-name run-file] :as service-options}
    {:keys [instance-id] :as options}]
   (debugf "Adding service settings for %s" service-name)
+  (check-runit-service-options service-options)
   (update-settings
    :runit options assoc-in [:jobs (keyword service-name)] service-options))
 
@@ -181,10 +204,13 @@ runit is not configured to replace init as PID 1."
             :let [service-name (name job)]]
       (write-service service-name service-options options))))
 
+(def action-names
+  {:reload :hup})
+
 (defmethod service-supervisor :runit
   [_ {:keys [service-name]}
-   {:keys [action if-flag if-stopped instance-id]
-    :or {action :start}
+   {:keys [action if-flag if-stopped instance-id wait]
+    :or {action :start wait true}
     :as options}]
   (debugf "Controlling service %s, :action %s" service-name action)
   (let [{:keys [sv sv-dir service-dir]} (get-settings :runit options)]
@@ -197,9 +223,10 @@ runit is not configured to replace init as PID 1."
                          :symbolic true :force true))
                 ;; Check for supervise/ok to be present. According to the docs,
                 ;; this should take less than five seconds.
-                (wait-for-file
-                 (fragment (file ~sv-dir ~service-name "supervise" "ok"))
-                 :standoff 5))
+                (when wait
+                  (wait-for-file
+                   (fragment (file ~sv-dir ~service-name "supervise" "ok"))
+                   :standoff 5)))
       :disable (exec-checked-script
                 (format "Disable service %s" service-name)
                 (sv down ~service-name)
@@ -209,15 +236,15 @@ runit is not configured to replace init as PID 1."
         (plan-when (target-flag? if-flag)
           (exec-checked-script
            (str (name action) " " service-name)
-           (sv ~(name action) ~service-name)))
+           (sv ~(name (action action-names action)) ~service-name)))
         (if if-stopped
           (exec-checked-script
            (str (name action) " " service-name)
            (if-not ("sv" "status" ~service-name)
-             (sv ~(name action) ~service-name)))
+             (sv ~(name (action action-names action)) ~service-name)))
           (exec-checked-script
            (str (name action) " " service-name)
-           (sv ~(name action) ~service-name)))))))
+           (sv ~(name (action action-names action)) ~service-name)))))))
 
 ;;; ## Server Spec
 (defn server-spec

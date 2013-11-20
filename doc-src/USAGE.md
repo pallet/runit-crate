@@ -1,5 +1,7 @@
 ## Usage
 
+The `runit` configuration does not replace the system init as PID 1.
+
 The `server-spec` function provides a convenient pallet server spec for
 runit.  It takes a single map as an argument, specifying configuration
 choices, as described below for the `settings` function.  You can use this
@@ -23,3 +25,12 @@ The `install` function is responsible for actually installing runit.
 
 The `configure` function writes the runit configuration file, using the form
 passed to the :config key in the `settings` function.
+
+
+### Supported Actions
+
+The `runit` crate supports the `:start`, `:stop`, `:restart`, `:enable` and
+`:disable` actions to
+[`service`](http://palletops.com/pallet/api/0.8/pallet.crate.service.html#var-service).
+
+### Job Configuration
