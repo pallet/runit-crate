@@ -1,4 +1,4 @@
-(defproject com.palletops/runit-crate "0.8.0-SNAPSHOT"
+(defproject com.palletops/runit-crate "0.8.0-alpha.2"
   :description "Pallet crate to install, configure and use runit"
   :url "http://palletops.com"
   :license {:name "Eclipse Public License"
