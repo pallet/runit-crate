@@ -1,5 +1,11 @@
 # Release Notes
 
+## 0.8.0-alpha.3
+
+- Add :no-deref to symbolic link for service
+
+- Update to pallet 0.8.0-RC.7
+
 ## 0.8.0-alpha.2
 
 - Translate reload to hup
