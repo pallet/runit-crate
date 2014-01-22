@@ -193,7 +193,8 @@ runit is not configured to replace init as PID 1."
     ;; (directory (fragment (file ~sv-dir ~service-name "supervise"))
     ;;            :owner owner :group group :mode "0755")
     (symbolic-link                      ; link to /etc/init.d
-     "/usr/bin/sv" (init-script-path service-name))))
+     "/usr/bin/sv" (init-script-path service-name)
+     :no-deref true)))
 
 (defn configure
   "Write out job definitions."
