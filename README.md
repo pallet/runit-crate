@@ -9,7 +9,7 @@ A pallet crate to install and configure runit.
 ### Dependency Information
 
 ```clj
-:dependencies [[com.palletops/runit-crate "0.8.0-alpha.2"]]
+:dependencies [[com.palletops/runit-crate "0.8.0-alpha.3"]]
 ```
 
 ### Releases
@@ -19,6 +19,14 @@ A pallet crate to install and configure runit.
   <tr><th>Pallet</th><th>Crate Version</th><th>Repo</th><th>GroupId</th></tr>
 </thead>
 <tbody>
+  <tr>
+    <th>0.8.0-RC.7</th>
+    <td>0.8.0-alpha.3</td>
+    <td>clojars</td>
+    <td>com.palletops</td>
+    <td><a href='https://github.com/pallet/runit-crate/blob/0.8.0-alpha.3/ReleaseNotes.md'>Release Notes</a></td>
+    <td><a href='https://github.com/pallet/runit-crate/blob/0.8.0-alpha.3/'>Source</a></td>
+  </tr>
   <tr>
     <th>0.8.0-RC.4</th>
     <td>0.8.0-alpha.2</td>
