@@ -3028,8 +3028,8 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>com.palletops/runit-crate -- Marginalia</title></head><body><table><tr><td class="docs"><div class="header"><h1 class="project-name">com.palletops/runit-crate</h1><h2 class="project-version">0.8.0-alpha.2</h2><br /><p>Pallet crate to install, configure and use runit</p>
-</div><div class="dependencies"><h3>dependencies</h3><table><tr><td class="dep-name">org.clojure/clojure</td><td class="dotted"><hr /></td><td class="dep-version">1.4.0</td></tr><tr><td class="dep-name">com.palletops/pallet</td><td class="dotted"><hr /></td><td class="dep-version">0.8.0-RC.1</td></tr></table></div></td><td class="codes" style="text-align: center; vertical-align: middle;color: #666;padding-right:20px"><br /><br /><br />(this space intentionally left almost blank)</td></tr><tr><td class="docs"><div class="toc"><a name="toc"><h3>namespaces</h3></a><ul><li><a href="#pallet.crate.runit">pallet.crate.runit</a></li><li><a href="#pallet.crate.socklog">pallet.crate.socklog</a></li></ul></div></td><td class="codes">&nbsp;</td></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#pallet.crate.runit" name="pallet.crate.runit"><h1 class="project-name">pallet.crate.runit</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>A <a href="https://palletops.com/">pallet</a> crate to install and configure runit.</p>
+</script><title>com.palletops/runit-crate -- Marginalia</title></head><body><table><tr><td class="docs"><div class="header"><h1 class="project-name">com.palletops/runit-crate</h1><h2 class="project-version">0.8.0-alpha.3</h2><br /><p>Pallet crate to install, configure and use runit</p>
+</div><div class="dependencies"><h3>dependencies</h3><table><tr><td class="dep-name">org.clojure/clojure</td><td class="dotted"><hr /></td><td class="dep-version">1.4.0</td></tr><tr><td class="dep-name">com.palletops/pallet</td><td class="dotted"><hr /></td><td class="dep-version">0.8.0-RC.7</td></tr></table></div></td><td class="codes" style="text-align: center; vertical-align: middle;color: #666;padding-right:20px"><br /><br /><br />(this space intentionally left almost blank)</td></tr><tr><td class="docs"><div class="toc"><a name="toc"><h3>namespaces</h3></a><ul><li><a href="#pallet.crate.runit">pallet.crate.runit</a></li><li><a href="#pallet.crate.socklog">pallet.crate.socklog</a></li></ul></div></td><td class="codes">&nbsp;</td></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#pallet.crate.runit" name="pallet.crate.runit"><h1 class="project-name">pallet.crate.runit</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>A <a href="https://palletops.com/">pallet</a> crate to install and configure runit.</p>
 
 <p>runit is not configured to replace init as PID 1.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns pallet.crate.runit
@@ -3200,7 +3200,8 @@ net.brehaut.ClojureTools = (function (SH) {
     ;; (directory (fragment (file ~sv-dir ~service-name &quot;supervise&quot;))
     ;;            :owner owner :group group :mode &quot;0755&quot;)
     (symbolic-link                      ; link to /etc/init.d
-     &quot;/usr/bin/sv&quot; (init-script-path service-name))))</pre></td></tr><tr><td class="docs"><p>Write out job definitions.</p>
+     &quot;/usr/bin/sv&quot; (init-script-path service-name)
+     :no-deref true)))</pre></td></tr><tr><td class="docs"><p>Write out job definitions.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn configure
   [{:keys [instance-id] :as options}]
   (let [{:keys [jobs]} (get-settings :runit {:instance-id instance-id})]
